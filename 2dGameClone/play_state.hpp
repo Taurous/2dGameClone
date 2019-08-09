@@ -2,15 +2,12 @@
 
 #include "abstract_state.hpp"
 
-constexpr auto MAX_WORLD_OBJECTS = 100;
-
-struct WorldObject
+constexpr int NUM_TILES = 9;
+enum
 {
-	double x, y;
-	double x_vel, y_vel;
-	double x_acc, y_acc;
-
-	double width, height;
+	EMPTY,
+	CROSS,
+	CIRCLE
 };
 
 class PlayState : public AbstractState
@@ -28,5 +25,8 @@ public:
 	void draw() override;
 
 private:
-	WorldObject *worldObjectArray;
+	int tiles[NUM_TILES];
+	int tile_size;
+	int offset_x;
+	int offset_y;
 };

@@ -9,7 +9,7 @@
 #include "play_state.hpp"
 
 constexpr int		DEFAULT_WIND_WIDTH = 1000;
-constexpr int		DEFAULT_WIND_HEIGHT = 600;
+constexpr int		DEFAULT_WIND_HEIGHT = 800;
 constexpr double	ticksPerSecond = 60.f;
 
 int main(int argc, char ** argv)

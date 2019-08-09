@@ -7,33 +7,33 @@
 #include "input.hpp"
 #include "state_machine.hpp"
 
-constexpr auto GRAVITY = 9.81 * 20;
-
 PlayState::PlayState(StateMachine &state_machine, InputHandler &input)
-	: AbstractState(state_machine, input)
+	: AbstractState(state_machine, input), tile_size(150), offset_x(0), offset_y(0)
 {
-	srand(time(NULL));
-	
-	worldObjectArray = new WorldObject[MAX_WORLD_OBJECTS];
+	al_init_primitives_addon();
 
-	for (int i = 0; i < MAX_WORLD_OBJECTS; ++i)
+	for (int i = 0; i < NUM_TILES; ++i)
 	{
-		worldObjectArray[i].x = i * 10;
-		worldObjectArray[i].y = rand() % 100;
-		worldObjectArray[i].width = 8;
-		worldObjectArray[i].height = 10;
-		worldObjectArray[i].x_vel = 0;
-		worldObjectArray[i].y_vel = double(rand() % 31 - 15);
-		worldObjectArray[i].x_acc = 0;
-		worldObjectArray[i].y_acc = GRAVITY;
+		tiles[i] = EMPTY;
 	}
 
-	al_init_primitives_addon();
+	tiles[4] = CROSS;
+	tiles[2] = CROSS;
+	tiles[3] = CIRCLE;
+	tiles[1] = CIRCLE;
+
+	int total_size = tile_size * 3;
+
+	int display_width = al_get_display_width(al_get_current_display());
+	int display_height = al_get_display_height(al_get_current_display());
+
+	offset_x = (display_width / 2) - (total_size / 2);
+	offset_y = (display_height / 2) - (total_size / 2);
 }
+
 
 PlayState::~PlayState()
 {
-	delete worldObjectArray;
 }
 
 void PlayState::pause()
@@ -47,44 +47,77 @@ void PlayState::resume()
 
 void PlayState::handleEvents()
 {
+	// Only need to do on mouse click
+	int mouse_x = m_input.getMouseX();
+	int mouse_y = m_input.getMouseY();
 
+	int selected_x = mouse_x - offset_x;
+	int selected_y = mouse_y - offset_y;
+	if (selected_x >= 0) selected_x /= tile_size;
+	else selected_x = -1000000;
+	if (selected_y >= 0) selected_y /= tile_size;
+	else selected_y = -1000000;
+
+	int index = selected_y * 3 + selected_x;
+
+	if (m_input.isMousePressed(MOUSE::LEFT))
+	{
+		if (index >= 0 && index < NUM_TILES)
+		{
+			if (tiles[index] == CROSS) tiles[index] = EMPTY;
+			else tiles[index] = CROSS;
+		}
+	}
+	else if (m_input.isMousePressed(MOUSE::RIGHT))
+	{
+		if (index >= 0 && index < NUM_TILES)
+		{
+			if (tiles[index] == CIRCLE) tiles[index] = EMPTY;
+			else tiles[index] = CIRCLE;
+		}
+	}
+	else if (m_input.isKeyPressed(ALLEGRO_KEY_C))
+	{
+		for (int i = 0; i < NUM_TILES; ++i)
+		{
+			tiles[i] = EMPTY;
+		}
+	}
 }
 void PlayState::update(double deltaTime)
 {
-	for (int i = 0; i < MAX_WORLD_OBJECTS; ++i)
-	{
-		worldObjectArray[i].x_vel += worldObjectArray[i].x_acc * deltaTime;
-		worldObjectArray[i].x += worldObjectArray[i].x_vel * deltaTime;
 
-		worldObjectArray[i].y_vel += worldObjectArray[i].y_acc * deltaTime;
-		worldObjectArray[i].y += worldObjectArray[i].y_vel * deltaTime;
-
-		if (worldObjectArray[i].y > 600 - worldObjectArray[i].height && worldObjectArray[i].y_vel >= 1.f)
-		{
-			worldObjectArray[i].y_vel = -0.6f * worldObjectArray[i].y_vel;
-		}
-
-		if (worldObjectArray[i].y + worldObjectArray[i].height > 600 && abs(worldObjectArray[i].y_vel) < 1.f)
-		{
-			worldObjectArray[i].y = 600 - worldObjectArray[i].height - 2;
-			worldObjectArray[i].y_acc = 0;
-			worldObjectArray[i].y_vel = 0;
-		}
-	}
-
-	printf("Speed: %.2f\n", worldObjectArray[0].y_vel);
 }
 void PlayState::draw()
 {
-	int x1, y1, x2, y2;
-
-	for (int i = 0; i < MAX_WORLD_OBJECTS; ++i)
+	int index = 0;
+	for (int y = 0; y < 3; ++y)
 	{
-		x1 = worldObjectArray[i].x;
-		y1 = worldObjectArray[i].y;
-		x2 = x1 + worldObjectArray[i].width;
-		y2 = y1 + worldObjectArray[i].height;
+		for (int x = 0; x < 3; ++x)
+		{
+			int x1 = offset_x + (x * tile_size);
+			int x2 = x1 + tile_size;
+			int y1 = offset_y + (y * tile_size);
+			int y2 = y1 + tile_size;
 
-		al_draw_rectangle(x1, y1, x2, y2, al_map_rgb(255, 0, 255), 2);
+			al_draw_rectangle(x1, y1, x2, y2, al_map_rgb(200, 200, 200), 2);
+
+			float inset = float(tile_size) * 0.15f;
+			float radius = (tile_size / 2) - inset;
+			switch (tiles[index])
+			{
+			case CROSS:
+				al_draw_line(x1 + inset, y1 + inset, x2 - inset, y2 - inset, al_map_rgb(255, 40, 40), 2);
+				al_draw_line(x1 + inset, y2 - inset, x2 - inset, y1 + inset, al_map_rgb(255, 40, 40), 2);
+				break;
+			case CIRCLE:
+				al_draw_circle((x1 + x2) / 2, (y1 + y2) / 2, radius, al_map_rgb(40, 40, 255), 2);
+				break;
+			default:
+				break;
+			}
+
+			index++;
+		}
 	}
 }

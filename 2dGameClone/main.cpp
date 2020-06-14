@@ -1,25 +1,33 @@
 #include <iostream>
+#include <sstream>
+#include <numeric>
+#include <execution>
+#include <algorithm>
 #include <chrono>
 
 #include <allegro5/allegro.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_ttf.h>
+#include <allegro5/allegro_image.h>
+#include <allegro5/allegro_primitives.h>
 
 #include "input.hpp"
 #include "state_machine.hpp"
 
-#include "play_state.hpp"
+#include "splash_state.hpp"
 
-constexpr int		DEFAULT_WIND_WIDTH = 1000;
+constexpr int		DEFAULT_WIND_WIDTH = 600;
 constexpr int		DEFAULT_WIND_HEIGHT = 800;
-constexpr double	ticksPerSecond = 60.f;
 
 int main(int argc, char ** argv)
 {
-	bool running = true;
-	bool redraw = false;
+	int prev_count = 0;
+	int frame_count = 0;
+	double acc_time = 0.f;
 
-	ALLEGRO_DISPLAY		*display = nullptr;
-	ALLEGRO_EVENT_QUEUE *ev_queue = nullptr;
-	ALLEGRO_TIMER		*timer = nullptr;
+	ALLEGRO_DISPLAY		*display	= nullptr;
+	ALLEGRO_EVENT_QUEUE *ev_queue	= nullptr;
+	ALLEGRO_FONT		*fps_font	= nullptr;
 
 	if (!al_init())
 	{
@@ -35,23 +43,27 @@ int main(int argc, char ** argv)
 		return -1;
 	}
 
+	al_init_image_addon();
+	al_init_font_addon();
+	al_init_ttf_addon();
+	al_init_primitives_addon();
+
 	ev_queue = al_create_event_queue();
-	timer = al_create_timer(1.f / ticksPerSecond);
+
+	fps_font = al_load_font("forced_square.ttf", 40, 0);
 
 	InputHandler m_input;
 
 	al_register_event_source(ev_queue, al_get_keyboard_event_source());
 	al_register_event_source(ev_queue, al_get_mouse_event_source());
 	al_register_event_source(ev_queue, al_get_display_event_source(display));
-	al_register_event_source(ev_queue, al_get_timer_event_source(timer));
 
 	StateMachine m_sm;
-	m_sm.pushState(std::make_unique<PlayState>(m_sm, m_input));
+	m_sm.pushState(std::make_unique<SplashState>(m_sm, m_input));
 
-	al_start_timer(timer);
-	while (running)
+	auto prev = std::chrono::high_resolution_clock::now();
+	while (m_sm.running())
 	{
-		bool cleanup = false;
 		ALLEGRO_EVENT ev;
 
 		if (al_get_next_event(ev_queue, &ev))
@@ -59,39 +71,40 @@ int main(int argc, char ** argv)
 			m_input.getInput(ev);
 			m_sm.handleEvents();
 
-			if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
+			if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
 			{
-				if (m_input.isKeyPressed(ALLEGRO_KEY_ESCAPE))
-				{
-					running = false;
-				}
-			}
-			else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
-			{
-				running = false;
-			}
-			else if (ev.type == ALLEGRO_EVENT_TIMER)
-			{
-				m_sm.update(al_get_timer_speed(timer));
-				cleanup = al_get_timer_count(timer) % int(ticksPerSecond) == 0;
-				redraw = true;
+				//TODO: Signal to state that window is being closed, save stuff
+				m_sm.quit();
 			}
 		}
 
-		if (al_is_event_queue_empty(ev_queue) && redraw)
+		auto now = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> deltaTime = now - prev;
+		m_sm.update(deltaTime.count() / 1000.0);
+		prev = now;
+
+		acc_time += deltaTime.count();
+
+		double time_interval = 1000.0;
+		if (acc_time >= time_interval)
 		{
-			redraw = false;
-
-			al_clear_to_color(al_map_rgb(0, 0, 0));
-
-			m_sm.draw(false);
-
-			al_flip_display();
+			acc_time -= time_interval;
+			prev_count = frame_count;
+			frame_count = 0;
 		}
-		if (cleanup) m_sm.removeDeadStates();
+
+		al_clear_to_color(al_map_rgb(10, 10, 20));
+
+		m_sm.draw(false);
+
+		if (fps_font) al_draw_textf(fps_font, al_map_rgb(235, 213, 52), 10, 10, 0, "%i", prev_count * int(1000.0 / time_interval));
+
+		al_flip_display();
+		frame_count++;
+
+		m_sm.removeDeadStates();
 	}
 
-	al_destroy_timer(timer);
 	al_destroy_event_queue(ev_queue);
 	al_destroy_display(display);
 }

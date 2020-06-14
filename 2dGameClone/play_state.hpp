@@ -1,14 +1,7 @@
 #pragma once
 
 #include "abstract_state.hpp"
-
-constexpr int NUM_TILES = 9;
-enum
-{
-	EMPTY,
-	CROSS,
-	CIRCLE
-};
+#include <stdint.h>
 
 class PlayState : public AbstractState
 {
@@ -25,8 +18,15 @@ public:
 	void draw() override;
 
 private:
-	int tiles[NUM_TILES];
+	uint16_t tiles_empty;
+	uint16_t tiles_type;
+	uint8_t current_type;
+
+	uint16_t conditions[8];
+
 	int tile_size;
-	int offset_x;
-	int offset_y;
+	bool playing;
+
+	int offx, offy;
+	int selected_index;
 };

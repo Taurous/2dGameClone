@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "splash_state.hpp"
 #include "play_state.hpp"
 
@@ -13,10 +15,20 @@ SplashState::SplashState(StateMachine& state_machine, InputHandler& input)
 	: AbstractState(state_machine, input), acc_time(0)
 {
 	al_logo = al_load_bitmap("Resources/tex/allegro_logo.png");
+	if (!al_logo)
+	{
+		std::cerr << "Unable to load texture 'allegro_logo.png'" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 	al_logo_w = al_get_bitmap_width(al_logo);
 	al_logo_h = al_get_bitmap_height(al_logo);
 
 	game_logo = al_load_bitmap("Resources/tex/game_logo_256.png");
+	if (!game_logo)
+	{
+		std::cerr << "Unable to load texture 'game_logo_256.png'" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 	game_logo_w = al_get_bitmap_width(game_logo);
 	game_logo_h = al_get_bitmap_height(game_logo);
 
@@ -24,7 +36,8 @@ SplashState::SplashState(StateMachine& state_machine, InputHandler& input)
 
 SplashState::~SplashState()
 {
-
+	al_destroy_bitmap(al_logo);
+	al_destroy_bitmap(game_logo);
 }
 
 void SplashState::pause()
@@ -72,6 +85,7 @@ void SplashState::draw()
 	int dispW = al_get_display_width(al_get_current_display());
 	int dispH = al_get_display_height(al_get_current_display());
 
+	al_clear_to_color(al_map_rgb(10, 10, 20));
 	al_draw_bitmap(al_logo, dispW - al_logo_w - 8, dispH - al_logo_h - 8, 0);
 	al_draw_tinted_bitmap(game_logo, cl, (dispW / 2) - (game_logo_w / 2), (dispH / 2) - (game_logo_h / 2), 0);
 }

@@ -22,8 +22,24 @@ public:
 	void draw() override;
 
 private:
+	struct ANIM
+	{
+		double start;
+		double pos;
+		double end;
+
+		double tElapsed;
+		double tLength;
+
+		bool finished;
+	}anim;
+
+	void makeAnim(double start, double end, double length);
+
 	ALLEGRO_BITMAP* bmp_circle;
 	ALLEGRO_BITMAP* bmp_cross;
+	ALLEGRO_BITMAP* bmp_back;
+	ALLEGRO_BITMAP* bmp_bar;
 	ALLEGRO_FONT* fnt_score;
 	ALLEGRO_FONT* fnt_win;
 	ALLEGRO_SAMPLE* click;
@@ -35,6 +51,8 @@ private:
 
 	uint16_t conditions[8];
 
+	double back_position;
+	double back_speed;
 	int tile_size;
 	bool playing;
 	int win_state;

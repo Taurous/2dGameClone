@@ -1,5 +1,6 @@
 #include <iostream> // For std::cerr
 #include <chrono>	// For FPS counting and providing game with tick time
+#include <fstream>
 
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
@@ -25,10 +26,19 @@ int main(int argc, char ** argv)
 
 	bool draw_fps = false;
 
+#ifndef _DEBUG
+	std::ofstream log("errorlog.txt");
+	if (log.is_open())
+	{
+		std::cerr.rdbuf(log.rdbuf());
+	}
+#endif
+
 	if (!al_init())
 	{
+		
 		std::cerr << "Failed to load Allegro!" << std::endl;
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 
 	display = al_create_display(DEFAULT_WIND_WIDTH, DEFAULT_WIND_HEIGHT);
@@ -36,7 +46,7 @@ int main(int argc, char ** argv)
 	if (!display)
 	{
 		std::cerr << "Failed to create display!" << std::endl;
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 
 	al_init_image_addon();
@@ -51,6 +61,8 @@ int main(int argc, char ** argv)
 	ev_queue = al_create_event_queue();
 
 	fps_font = al_load_font("Resources/font/forced_square.ttf", 40, 0);
+
+	if (!fps_font) std::cerr << "Failed to load font 'Resources/font/forced_square.ttf" << std::endl;
 
 	InputHandler m_input;
 
@@ -105,8 +117,6 @@ int main(int argc, char ** argv)
 
 		if (acc_time >= 1.0 / const_fps)
 		{
-			al_clear_to_color(al_map_rgb(10, 10, 20));
-
 			m_sm.draw(false);
 
 			if (fps_font && draw_fps) al_draw_textf(fps_font, al_map_rgb(235, 213, 52), 10, 10, 0, "%i", fps);
@@ -122,6 +132,7 @@ int main(int argc, char ** argv)
 		m_sm.removeDeadStates();
 	}
 
+	al_destroy_font(fps_font);
 	al_destroy_event_queue(ev_queue);
 	al_destroy_display(display);
 }

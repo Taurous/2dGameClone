@@ -1,6 +1,5 @@
 #include "play_state.hpp"
 
-#include <iostream> // For debugging
 #include <bitset>
 
 #include <allegro5/allegro_primitives.h>
@@ -10,13 +9,24 @@
 
 constexpr int GRID_SIZE = 3;
 
-void drawX(int x1, int y1, int x2, int y2, ALLEGRO_COLOR cl, int width);
-
 PlayState::PlayState(StateMachine& state_machine, InputHandler& input)
-	: AbstractState(state_machine, input), tiles_empty(0), tiles_type(0), current_type(0), playing(true), selected_index(-1)
+	: AbstractState(state_machine, input),
+	tiles_empty(0), tiles_type(0), current_type(0), playing(true), selected_index(-1),
+	bmp_circle(nullptr), bmp_cross(nullptr), fnt_score(nullptr), click(nullptr),
+	cross_score(0), circle_score(0), win_state(0)
 {
-	int display_width = al_get_display_width(al_get_current_display());
-	int display_height = al_get_display_height(al_get_current_display());
+	bmp_circle = al_load_bitmap("Resources/tex/circle.png");
+	bmp_cross = al_load_bitmap("Resources/tex/cross.png");
+	fnt_score = al_load_font("Resources/font/UASQUARE.TTF", 42, 0);
+	fnt_win = al_load_font("Resources/font/UASQUARE.TTF", 68, 0);
+	click = al_load_sample("Resources/sound/click.wav");
+
+	if (!bmp_cross || !bmp_circle || !fnt_score || !click) exit(-1);
+
+	bmp_size = al_get_bitmap_width(bmp_circle);
+
+	display_width = al_get_display_width(al_get_current_display());
+	display_height = al_get_display_height(al_get_current_display());
 
 	tile_size = display_width < display_height ? display_width / 4 : display_height / 4;
 
@@ -31,7 +41,6 @@ PlayState::PlayState(StateMachine& state_machine, InputHandler& input)
 	conditions[5] = 0b100100100; // Right Column
 	conditions[6] = 0b001010100; // Left Diagonal
 	conditions[7] = 0b100010001; // Right Diagonal
-
 }
 
 
@@ -67,7 +76,7 @@ void PlayState::handleEvents()
 
 	selected_index = -1;
 
-	if (mouse_x >= offx && mouse_x <= offx + (tile_size * GRID_SIZE) && mouse_y >= offy && mouse_y <= offy + (tile_size * GRID_SIZE))
+	if (mouse_x >= offx && mouse_x < offx + (tile_size * GRID_SIZE) && mouse_y >= offy && mouse_y < offy + (tile_size * GRID_SIZE))
 	{
 		int selected_x = (mouse_x - offx) / tile_size;
 		int selected_y = (mouse_y - offy) / tile_size;
@@ -91,6 +100,9 @@ void PlayState::handleEvents()
 						current_type = 0;
 					}
 					else current_type = 1;
+
+					al_stop_samples();
+					al_play_sample(click, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, nullptr);
 				}
 			}
 
@@ -100,12 +112,14 @@ void PlayState::handleEvents()
 				{
 					if ((tiles_type & conditions[i]) == conditions[i])
 					{
-						std::cout << "Circle Wins! " << std::endl;
+						win_state = CIRCLE_WIN;
+						circle_score++;
 						playing = false;
 					}
 					else if ((~tiles_type & conditions[i]) == conditions[i])
 					{
-						std::cout << "Cross Wins! " << std::endl;
+						win_state = CROSS_WIN;
+						cross_score++;
 						playing = false;
 					}
 				}
@@ -113,7 +127,7 @@ void PlayState::handleEvents()
 
 			if (tiles_empty == 0b111111111 && playing == true)
 			{
-				std::cout << "Its a draw!" << std::endl;
+				win_state = DRAW;
 				playing = false;
 			}
 		}
@@ -121,43 +135,37 @@ void PlayState::handleEvents()
 }
 void PlayState::update(double deltaTime)
 {
-	
+
 }
 void PlayState::draw()
 {
 	int index = 0;
-	for (int y = 0; y < GRID_SIZE; ++y)
+	for (int y = offy; y < offy + GRID_SIZE * tile_size; y+=tile_size)
 	{
-		for (int x = 0; x < GRID_SIZE; ++x)
+		for (int x = offx; x < offx + GRID_SIZE * tile_size; x+=tile_size)
 		{
-			int x1 = offx + (x * tile_size);
-			int x2 = x1 + tile_size;
-			int y1 = offy + (y * tile_size);
-			int y2 = y1 + tile_size;
-
-			float inset = float(tile_size) * 0.15f;
-			float radius = (tile_size / 2) - inset;
-
 			if (tiles_empty & (1 << index))
 			{
 				if ((tiles_type >> index) & 1)
 				{
-					al_draw_circle(x1 + (tile_size / 2), y1 + (tile_size / 2), radius, al_map_rgb(0xE1, 0x06, 0x00), 6);
+					al_draw_tinted_scaled_bitmap(bmp_circle, al_map_rgb(0xE1, 0x06, 0x00), 0, 0, bmp_size, bmp_size, x, y, tile_size, tile_size, 0);
 				}
 				else
 				{
-					drawX(x1 + inset, y1 + inset, x2 - inset, y2 - inset, al_map_rgb(0x00, 0x23, 0x9C), 6);
+					al_draw_tinted_scaled_bitmap(bmp_cross, al_map_rgb(0x00, 0x23, 0x9C), 0, 0, bmp_size, bmp_size, x, y, tile_size, tile_size, 0);
 				}
 			}
 			else if (index == selected_index)
 			{
+				int inset = 12;
+				int inset2 = inset * 2;
 				switch (current_type)
 				{
 				case 0:
-					drawX(x1 + inset, y1 + inset, x2 - inset, y2 - inset, al_map_rgb(0x00, 0x23, 0x81), 6);
+					al_draw_tinted_scaled_bitmap(bmp_cross, al_map_rgb(0x00, 0x13, 0x59), 0, 0, bmp_size, bmp_size, x+inset, y+inset, tile_size-inset2, tile_size-inset2, 0);
 					break;
 				case 1:
-					al_draw_circle(x1 + (tile_size / 2), y1 + (tile_size / 2), radius, al_map_rgb(0x9A, 0x06, 0x00), 6);
+					al_draw_tinted_scaled_bitmap(bmp_circle, al_map_rgb(0x92, 0x04, 0x00), 0, 0, bmp_size, bmp_size, x + inset, y + inset, tile_size - inset2, tile_size - inset2, 0);
 					break;
 				default:
 					break;
@@ -173,10 +181,25 @@ void PlayState::draw()
 
 	al_draw_line(offx, offy + tile_size, offx + (tile_size * GRID_SIZE), offy + tile_size, al_map_rgb(255, 255, 255), 4);
 	al_draw_line(offx, offy + (tile_size * 2), offx + (tile_size * GRID_SIZE), offy + (tile_size * 2), al_map_rgb(255, 255, 255), 4);
-}
 
-void drawX(int x1, int y1, int x2, int y2, ALLEGRO_COLOR cl, int width)
-{
-	al_draw_line(x1, y1, x2, y2, cl, width);
-	al_draw_line(x1, y2, x2, y1, cl, width);
+	int screen_mid = display_width / 2;
+
+	al_draw_textf(fnt_score, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid - 12, 18, ALLEGRO_ALIGN_RIGHT, "%i - Cross", cross_score);
+	al_draw_textf(fnt_score, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid + 12, 18, ALLEGRO_ALIGN_LEFT, "Circle - %i", circle_score);
+
+	if (!playing)
+	{
+		switch (win_state)
+		{
+		case DRAW:
+			al_draw_text(fnt_win, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid, display_height - 96, ALLEGRO_ALIGN_CENTRE, "It's a Draw!");
+			break;
+		case CROSS_WIN:
+			al_draw_text(fnt_win, al_map_rgb(0x00, 0x23, 0x9C), screen_mid, display_height - 96, ALLEGRO_ALIGN_CENTRE, "Cross Wins!");
+			break;
+		case CIRCLE_WIN:
+			al_draw_text(fnt_win, al_map_rgb(0xE1, 0x06, 0x00), screen_mid, display_height - 96, ALLEGRO_ALIGN_CENTRE, "Circle Wins!");
+			break;
+		}
+	}
 }

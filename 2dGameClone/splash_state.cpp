@@ -12,11 +12,11 @@ constexpr float fade_out_time = 3.6f;
 SplashState::SplashState(StateMachine& state_machine, InputHandler& input)
 	: AbstractState(state_machine, input), acc_time(0)
 {
-	al_logo = al_load_bitmap("allegro_logo.png");
+	al_logo = al_load_bitmap("Resources/tex/allegro_logo.png");
 	al_logo_w = al_get_bitmap_width(al_logo);
 	al_logo_h = al_get_bitmap_height(al_logo);
 
-	game_logo = al_load_bitmap("game_logo_256.png");
+	game_logo = al_load_bitmap("Resources/tex/game_logo_256.png");
 	game_logo_w = al_get_bitmap_width(game_logo);
 	game_logo_h = al_get_bitmap_height(game_logo);
 

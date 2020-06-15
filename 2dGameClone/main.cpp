@@ -1,33 +1,29 @@
-#include <iostream>
-#include <sstream>
-#include <numeric>
-#include <execution>
-#include <algorithm>
-#include <chrono>
+#include <iostream> // For std::cerr
+#include <chrono>	// For FPS counting and providing game with tick time
 
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_acodec.h>
 
 #include "input.hpp"
 #include "state_machine.hpp"
-
 #include "splash_state.hpp"
 
-constexpr int		DEFAULT_WIND_WIDTH = 600;
-constexpr int		DEFAULT_WIND_HEIGHT = 800;
+constexpr int DEFAULT_WIND_WIDTH	= 600;
+constexpr int DEFAULT_WIND_HEIGHT	= 800;
+constexpr double const_fps			= 60.0;
 
 int main(int argc, char ** argv)
 {
-	int prev_count = 0;
-	int frame_count = 0;
-	double acc_time = 0.f;
-
 	ALLEGRO_DISPLAY		*display	= nullptr;
 	ALLEGRO_EVENT_QUEUE *ev_queue	= nullptr;
 	ALLEGRO_FONT		*fps_font	= nullptr;
+
+	bool draw_fps = false;
 
 	if (!al_init())
 	{
@@ -48,9 +44,13 @@ int main(int argc, char ** argv)
 	al_init_ttf_addon();
 	al_init_primitives_addon();
 
+	al_install_audio();
+	al_init_acodec_addon();
+	al_reserve_samples(4);
+
 	ev_queue = al_create_event_queue();
 
-	fps_font = al_load_font("forced_square.ttf", 40, 0);
+	fps_font = al_load_font("Resources/font/forced_square.ttf", 40, 0);
 
 	InputHandler m_input;
 
@@ -61,7 +61,12 @@ int main(int argc, char ** argv)
 	StateMachine m_sm;
 	m_sm.pushState(std::make_unique<SplashState>(m_sm, m_input));
 
-	auto prev = std::chrono::high_resolution_clock::now();
+	unsigned int frame_count = 0;
+	double fps_time = 0.0;
+	double acc_time = 0.0f;
+	int fps = 0.0;
+
+	auto last_time = std::chrono::high_resolution_clock::now();
 	while (m_sm.running())
 	{
 		ALLEGRO_EVENT ev;
@@ -76,31 +81,43 @@ int main(int argc, char ** argv)
 				//TODO: Signal to state that window is being closed, save stuff
 				m_sm.quit();
 			}
+			
+			if (m_input.isKeyPressed(ALLEGRO_KEY_F))
+			{
+				draw_fps = !draw_fps;
+			}
 		}
 
-		auto now = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double, std::milli> deltaTime = now - prev;
-		m_sm.update(deltaTime.count() / 1000.0);
-		prev = now;
+		auto current_time = std::chrono::high_resolution_clock::now();
+		auto delta_time = std::chrono::duration<double>(current_time - last_time).count();
+		last_time = current_time;
 
-		acc_time += deltaTime.count();
+		m_sm.update(delta_time);
 
-		double time_interval = 1000.0;
-		if (acc_time >= time_interval)
+		fps_time += delta_time;
+		if (fps_time >= 0.5)
 		{
-			acc_time -= time_interval;
-			prev_count = frame_count;
+			fps_time /= frame_count;
+			fps = int(1.0 / fps_time);
+			fps_time = 0.0;
 			frame_count = 0;
 		}
 
-		al_clear_to_color(al_map_rgb(10, 10, 20));
+		if (acc_time >= 1.0 / const_fps)
+		{
+			al_clear_to_color(al_map_rgb(10, 10, 20));
 
-		m_sm.draw(false);
+			m_sm.draw(false);
 
-		if (fps_font) al_draw_textf(fps_font, al_map_rgb(235, 213, 52), 10, 10, 0, "%i", prev_count * int(1000.0 / time_interval));
+			if (fps_font && draw_fps) al_draw_textf(fps_font, al_map_rgb(235, 213, 52), 10, 10, 0, "%i", fps);
 
-		al_flip_display();
-		frame_count++;
+			al_flip_display();
+
+			frame_count++;
+			acc_time -= 1.0 / const_fps;
+		}
+
+		acc_time += delta_time;
 
 		m_sm.removeDeadStates();
 	}

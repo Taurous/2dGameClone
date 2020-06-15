@@ -1,5 +1,9 @@
 #pragma once
 
+#include <allegro5/allegro.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_audio.h>
+
 #include "abstract_state.hpp"
 #include <stdint.h>
 
@@ -18,6 +22,13 @@ public:
 	void draw() override;
 
 private:
+	ALLEGRO_BITMAP* bmp_circle;
+	ALLEGRO_BITMAP* bmp_cross;
+	ALLEGRO_FONT* fnt_score;
+	ALLEGRO_FONT* fnt_win;
+	ALLEGRO_SAMPLE* click;
+	int bmp_size;
+
 	uint16_t tiles_empty;
 	uint16_t tiles_type;
 	uint8_t current_type;
@@ -26,7 +37,18 @@ private:
 
 	int tile_size;
 	bool playing;
+	int win_state;
+	int cross_score, circle_score;
 
 	int offx, offy;
 	int selected_index;
+
+	int display_width, display_height;
+
+	enum
+	{
+		DRAW,
+		CROSS_WIN,
+		CIRCLE_WIN
+	};
 };

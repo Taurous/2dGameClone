@@ -82,6 +82,7 @@
     <Allegro_AddonDialog>true</Allegro_AddonDialog>
     <Allegro_AddonFont>true</Allegro_AddonFont>
     <Allegro_LibraryType>DynamicDebug</Allegro_LibraryType>
+    <Allegro_AddonAcodec>true</Allegro_AddonAcodec>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Allegro_AddonImage>true</Allegro_AddonImage>
@@ -89,6 +90,8 @@
     <Allegro_AddonPrimitives>true</Allegro_AddonPrimitives>
     <Allegro_AddonFont>true</Allegro_AddonFont>
     <Allegro_LibraryType>StaticMonolithRelease</Allegro_LibraryType>
+    <Allegro_AddonAudio>true</Allegro_AddonAudio>
+    <Allegro_AddonAcodec>true</Allegro_AddonAcodec>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -132,10 +135,12 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <SubSystem>Windows</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

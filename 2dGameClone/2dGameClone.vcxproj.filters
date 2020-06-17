@@ -30,6 +30,9 @@
     <ClCompile Include="splash_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="font_animation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="input.hpp">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="splash_state.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="font_animation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

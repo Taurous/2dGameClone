@@ -144,6 +144,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="font_animation.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="play_state.cpp" />
@@ -152,6 +153,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="abstract_state.hpp" />
+    <ClInclude Include="font_animation.hpp" />
     <ClInclude Include="input.hpp" />
     <ClInclude Include="play_state.hpp" />
     <ClInclude Include="splash_state.hpp" />

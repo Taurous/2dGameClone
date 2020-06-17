@@ -1,11 +1,13 @@
 #pragma once
+#include <stdint.h>
+#include <vector>
 
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_audio.h>
 
 #include "abstract_state.hpp"
-#include <stdint.h>
+#include "font_animation.hpp"
 
 class PlayState : public AbstractState
 {
@@ -14,36 +16,28 @@ public:
 
 	~PlayState() override;
 
-	void pause() override;
-	void resume() override;
+	void pause() override { };
+	void resume() override { };
 
 	void handleEvents() override;
 	void update(double deltaTime) override;
 	void draw() override;
 
 private:
-	struct ANIM
-	{
-		double start;
-		double pos;
-		double end;
+	bool loadResources();
 
-		double tElapsed;
-		double tLength;
-
-		bool finished;
-	}anim;
-
-	void makeAnim(double start, double end, double length);
+	std::vector<FontAnimation> anims;
 
 	ALLEGRO_BITMAP* bmp_circle;
 	ALLEGRO_BITMAP* bmp_cross;
 	ALLEGRO_BITMAP* bmp_back;
 	ALLEGRO_BITMAP* bmp_bar;
+	ALLEGRO_BITMAP* bmp_grid;
+
 	ALLEGRO_FONT* fnt_score;
 	ALLEGRO_FONT* fnt_win;
-	ALLEGRO_SAMPLE* click;
-	int bmp_size;
+
+	ALLEGRO_SAMPLE* smp_click;
 
 	uint16_t tiles_empty;
 	uint16_t tiles_type;

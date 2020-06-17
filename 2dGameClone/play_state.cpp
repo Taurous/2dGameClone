@@ -11,29 +11,15 @@ constexpr int GRID_SIZE = 3;
 PlayState::PlayState(StateMachine& state_machine, InputHandler& input)
 	: AbstractState(state_machine, input),
 	tiles_empty(0), tiles_type(0), current_type(0), playing(true), selected_index(-1),
-	bmp_circle(nullptr), bmp_cross(nullptr), fnt_score(nullptr), click(nullptr), bmp_back(nullptr), bmp_bar(nullptr),
+	bmp_circle(nullptr), bmp_cross(nullptr), fnt_score(nullptr), smp_click(nullptr), bmp_back(nullptr), bmp_bar(nullptr), bmp_grid(nullptr),
 	cross_score(0), circle_score(0), win_state(0), back_speed(-50), back_position(0)
 {
-	bmp_circle = al_load_bitmap("Resources/tex/circle.png");
-	bmp_cross = al_load_bitmap("Resources/tex/cross.png");
-	bmp_back = al_load_bitmap("Resources/tex/back.png");
-	bmp_bar = al_load_bitmap("Resources/tex/bar.png");
-	fnt_score = al_load_font("Resources/font/UASQUARE.TTF", 42, 0);
-	fnt_win = al_load_font("Resources/font/UASQUARE.TTF", 68, 0);
-	click = al_load_sample("Resources/sound/click.wav");
-
-	if (!bmp_cross || !bmp_circle || !bmp_back || !bmp_bar || !fnt_score || !click)
-	{
-		std::cerr << "Failed to load resource(s)..." << std::endl;
-		exit(EXIT_FAILURE);
-	}
-
-	bmp_size = al_get_bitmap_width(bmp_circle);
+	if (!loadResources()) exit(EXIT_FAILURE);
 
 	display_width = al_get_display_width(al_get_current_display());
 	display_height = al_get_display_height(al_get_current_display());
 
-	tile_size = display_width < display_height ? display_width / 4 : display_height / 4;
+	tile_size = 150;
 
 	offx = (display_width / 2) - (tile_size * GRID_SIZE / 2);
 	offy = (display_height / 2) - (tile_size * GRID_SIZE / 2);
@@ -47,7 +33,8 @@ PlayState::PlayState(StateMachine& state_machine, InputHandler& input)
 	conditions[6] = 0b001010100; // Left Diagonal
 	conditions[7] = 0b100010001; // Right Diagonal
 
-	anim.finished = true;
+	anims.push_back(FontAnimation(fnt_score, 0));
+	anims.push_back(FontAnimation(fnt_score, 0));
 }
 
 PlayState::~PlayState()
@@ -57,24 +44,12 @@ PlayState::~PlayState()
 	al_destroy_bitmap(bmp_back);
 	al_destroy_font(fnt_score);
 	al_destroy_font(fnt_win);
-	al_destroy_sample(click);
-}
-
-void PlayState::pause()
-{
-
-}
-void PlayState::resume()
-{
-
+	al_destroy_sample(smp_click);
 }
 
 void PlayState::handleEvents()
 {
-	if (m_input.isKeyPressed(ALLEGRO_KEY_T))
-	{
-		makeAnim(0, 800, 0.15);
-	}
+	// If playing is false, then the game is in the win state, click to reset
 	if (!playing)
 	{
 		if (m_input.isMousePressed(MOUSE::LEFT))
@@ -117,7 +92,7 @@ void PlayState::handleEvents()
 					else current_type = 1;
 
 					al_stop_samples();
-					al_play_sample(click, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, nullptr);
+					al_play_sample(smp_click, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, nullptr);
 				}
 			}
 
@@ -128,13 +103,13 @@ void PlayState::handleEvents()
 					if ((tiles_type & conditions[i]) == conditions[i])
 					{
 						win_state = CIRCLE_WIN;
-						circle_score++;
+						anims[0].start(++circle_score, 0.15);
 						playing = false;
 					}
 					else if ((~tiles_type & conditions[i]) == conditions[i])
 					{
 						win_state = CROSS_WIN;
-						cross_score++;
+						anims[1].start(++cross_score, 0.15);
 						playing = false;
 					}
 				}
@@ -153,22 +128,17 @@ void PlayState::update(double deltaTime)
 	back_position += back_speed * deltaTime;
 	if (back_position < 0) back_position += display_width;
 
-	if (!anim.finished)
+	for (auto& fA : anims)
 	{
-		anim.pos = (1.0 - anim.tElapsed) * anim.start + anim.tElapsed * anim.end;
-		anim.tElapsed += deltaTime / anim.tLength;
-
-		if (anim.tElapsed >= 1.0)
-		{
-			anim.finished = true;
-		}
+		fA.update(deltaTime);
 	}
 }
 void PlayState::draw()
 {
-	ALLEGRO_COLOR clear_color = al_map_rgb(0x08, 0x08, 0x08);
+	ALLEGRO_COLOR clear_color = al_map_rgb(0x10, 0x10, 0x10);
 	al_clear_to_color(clear_color);
 
+	//Background
 	int back_y = 70;
 	int back_h = display_height - back_y;
 	if (!playing) back_h -= 100;
@@ -180,6 +150,10 @@ void PlayState::draw()
 	al_draw_tinted_bitmap(bmp_bar, clear_color, 0, back_y, 0);
 	if (!playing) al_draw_tinted_bitmap(bmp_bar, clear_color, 0, back_y+back_h-al_get_bitmap_height(bmp_bar), ALLEGRO_FLIP_VERTICAL);
 
+	//Draw Grid
+	al_draw_bitmap(bmp_grid, offx, offy, 0);
+
+	//Drawing Crosses and Circles
 	int index = 0;
 	for (int y = offy; y < offy + GRID_SIZE * tile_size; y+=tile_size)
 	{
@@ -189,24 +163,27 @@ void PlayState::draw()
 			{
 				if ((tiles_type >> index) & 1)
 				{
-					al_draw_tinted_scaled_bitmap(bmp_circle, al_map_rgb(0xE1, 0x06, 0x00), 0, 0, bmp_size, bmp_size, x, y, tile_size, tile_size, 0);
+					al_draw_tinted_bitmap(bmp_circle, al_map_rgb(0xE1, 0x06, 0x00), x, y, 0);
 				}
 				else
 				{
-					al_draw_tinted_scaled_bitmap(bmp_cross, al_map_rgb(0x00, 0x23, 0x9C), 0, 0, bmp_size, bmp_size, x, y, tile_size, tile_size, 0);
+					al_draw_tinted_bitmap(bmp_cross, al_map_rgb(0x00, 0x23, 0x9C), x, y, 0);
 				}
 			}
 			else if (index == selected_index)
 			{
 				int inset = 12;
 				int inset2 = inset * 2;
+				int sz = 1;
 				switch (current_type)
 				{
 				case 0:
-					al_draw_tinted_scaled_bitmap(bmp_cross, al_map_rgb(0x00, 0x13, 0x59), 0, 0, bmp_size, bmp_size, x+inset, y+inset, tile_size-inset2, tile_size-inset2, 0);
+					sz = al_get_bitmap_width(bmp_cross);
+					al_draw_tinted_scaled_bitmap(bmp_cross, al_map_rgb(0x00, 0x13, 0x59), 0, 0, sz, sz, x+inset, y+inset, tile_size-inset2, tile_size-inset2, 0);
 					break;
 				case 1:
-					al_draw_tinted_scaled_bitmap(bmp_circle, al_map_rgb(0x92, 0x04, 0x00), 0, 0, bmp_size, bmp_size, x + inset, y + inset, tile_size - inset2, tile_size - inset2, 0);
+					sz = al_get_bitmap_width(bmp_circle);
+					al_draw_tinted_scaled_bitmap(bmp_circle, al_map_rgb(0x92, 0x04, 0x00), 0, 0, sz, sz, x + inset, y + inset, tile_size - inset2, tile_size - inset2, 0);
 					break;
 				default:
 					break;
@@ -217,16 +194,14 @@ void PlayState::draw()
 		}
 	}
 
-	al_draw_line(offx + tile_size, offy, offx + tile_size, offy + (tile_size * GRID_SIZE), al_map_rgb(255, 255, 255), 4);
-	al_draw_line(offx + (tile_size * 2), offy, offx + (tile_size * 2), offy + (tile_size * GRID_SIZE), al_map_rgb(255, 255, 255), 4);
-
-	al_draw_line(offx, offy + tile_size, offx + (tile_size * GRID_SIZE), offy + tile_size, al_map_rgb(255, 255, 255), 4);
-	al_draw_line(offx, offy + (tile_size * 2), offx + (tile_size * GRID_SIZE), offy + (tile_size * 2), al_map_rgb(255, 255, 255), 4);
-
 	int screen_mid = display_width / 2;
 
-	al_draw_textf(fnt_score, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid - 12, 12, ALLEGRO_ALIGN_RIGHT, "%i - Cross", cross_score);
-	al_draw_textf(fnt_score, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid + 12, 12, ALLEGRO_ALIGN_LEFT, "Circle - %i", circle_score);
+	al_draw_text(fnt_score, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid - 12, 12, ALLEGRO_ALIGN_RIGHT, "- Cross");
+	anims[1].draw(screen_mid - 12 - al_get_text_width(fnt_score, " - Cross"), 12, al_map_rgb(0xFA, 0x9C, 0x10), ALLEGRO_ALIGN_RIGHT);
+
+	al_draw_text(fnt_score, al_map_rgb(0xFA, 0x9C, 0x10), screen_mid + 12, 12, ALLEGRO_ALIGN_LEFT, "Circle -");
+	anims[0].draw(screen_mid + 12 + al_get_text_width(fnt_score, "Circle - "), 12, al_map_rgb(0xFA, 0x9C, 0x10), ALLEGRO_ALIGN_LEFT);
+
 
 	if (!playing)
 	{
@@ -251,20 +226,71 @@ void PlayState::draw()
 
 		al_draw_text(fnt_win, cl, screen_mid, display_height - 96, ALLEGRO_ALIGN_CENTRE, text.c_str());
 	}
-
-	if (!anim.finished)
-	{
-		al_draw_circle(10, anim.pos, 10, al_map_rgb(255, 0, 255), 2);
-	}
 }
 
-void PlayState::makeAnim(double start, double end, double length)
+bool PlayState::loadResources()
 {
-	anim.tElapsed = 0;
-	anim.tLength = length;
-	anim.finished = false;
+	bool success = true;
 
-	anim.start = start;
-	anim.pos = start;
-	anim.end = end;
+	const char bCircle[] = "Resources/tex/circle.png";
+	const char bCross[] = "Resources/tex/cross.png";
+	const char bBack[] = "Resources/tex/back.png";
+	const char bBar[] = "Resources/tex/bar.png";
+	const char bGrid[] = "Resources/tex/grid.png";
+
+	const char fFont[] = "Resources/font/UASQUARE.TTF";
+
+	const char sClick[] = "Resources/sound/click.wav";
+
+	bmp_circle = al_load_bitmap(bCircle);
+	if (!bmp_circle)
+	{
+		std::cerr << "Failed to load: " << bCircle << std::endl;
+		success = false;
+	}
+
+	bmp_cross = al_load_bitmap(bCross);
+	if (!bmp_cross)
+	{
+		std::cerr << "Failed to load: " << bCross << std::endl;
+		success = false;
+	}
+
+	bmp_back = al_load_bitmap(bBack);
+	if (!bmp_back)
+	{
+		std::cerr << "Failed to load: " << bBack << std::endl;
+		success = false;
+	}
+
+	bmp_bar = al_load_bitmap(bBar);
+	if (!bmp_bar)
+	{
+		std::cerr << "Failed to load: " << bBar << std::endl;
+		success = false;
+	}
+	
+	bmp_grid = al_load_bitmap(bGrid);
+	if (!bmp_grid)
+	{
+		std::cerr << "Failed to load: " << bGrid << std::endl;
+		success = false;
+	}
+
+	fnt_score = al_load_font(fFont, 42, 0);
+	fnt_win = al_load_font(fFont, 68, 0);
+	if (!fnt_score || !fnt_win)
+	{
+		std::cerr << "Failed to load: " << fFont << std::endl;
+		success = false;
+	}
+
+	smp_click = al_load_sample(sClick);
+	if (!smp_click)
+	{
+		std::cerr << "Failed to load: " << sClick << std::endl;
+		success = false;
+	}
+
+	return success;
 }

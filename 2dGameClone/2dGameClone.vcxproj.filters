@@ -30,7 +30,7 @@
     <ClCompile Include="splash_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="font_animation.cpp">
+    <ClCompile Include="animation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -50,7 +50,7 @@
     <ClInclude Include="splash_state.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="font_animation.hpp">
+    <ClInclude Include="animation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

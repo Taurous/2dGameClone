@@ -1,6 +1,7 @@
 #include <iostream> // For std::cerr
 #include <chrono>	// For FPS counting and providing game with tick time
 #include <fstream>
+#include <sstream>
 
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
@@ -16,16 +17,14 @@
 
 constexpr int DEFAULT_WIND_WIDTH	= 600;
 constexpr int DEFAULT_WIND_HEIGHT	= 800;
-constexpr double const_fps			= 60.0;
+constexpr double TARGET_SPF			= 1.0 / 60.0;
+std::string DISPLAY_TITLE			= "Circles and Crosses";
 
 int main(int argc, char ** argv)
 {
 	ALLEGRO_DISPLAY		*display	= nullptr;
 	ALLEGRO_EVENT_QUEUE *ev_queue	= nullptr;
-	ALLEGRO_FONT		*fps_font	= nullptr;
-
-	bool draw_fps = false;
-
+	
 #ifndef _DEBUG
 	std::ofstream log("errorlog.txt");
 	if (log.is_open())
@@ -41,6 +40,7 @@ int main(int argc, char ** argv)
 		exit(EXIT_FAILURE);
 	}
 
+	al_set_new_window_title(DISPLAY_TITLE.c_str());
 	display = al_create_display(DEFAULT_WIND_WIDTH, DEFAULT_WIND_HEIGHT);
 
 	if (!display)
@@ -59,10 +59,6 @@ int main(int argc, char ** argv)
 	al_reserve_samples(4);
 
 	ev_queue = al_create_event_queue();
-
-	fps_font = al_load_font("Resources/font/forced_square.ttf", 40, 0);
-
-	if (!fps_font) std::cerr << "Failed to load font 'Resources/font/forced_square.ttf" << std::endl;
 
 	InputHandler m_input;
 
@@ -93,11 +89,6 @@ int main(int argc, char ** argv)
 				//TODO: Signal to state that window is being closed, save stuff
 				m_sm.quit();
 			}
-			
-			if (m_input.isKeyPressed(ALLEGRO_KEY_F))
-			{
-				draw_fps = !draw_fps;
-			}
 		}
 
 		auto current_time = std::chrono::high_resolution_clock::now();
@@ -113,26 +104,27 @@ int main(int argc, char ** argv)
 			fps = int(1.0 / fps_time);
 			fps_time = 0.0;
 			frame_count = 0;
+
+			std::stringstream ss;
+			ss << DISPLAY_TITLE << " FPS: " << fps;
+			al_set_window_title(display, ss.str().c_str());
 		}
 
-		if (acc_time >= 1.0 / const_fps)
+		if (acc_time >= TARGET_SPF)
 		{
 			m_sm.draw(false);
-
-			if (fps_font && draw_fps) al_draw_textf(fps_font, al_map_rgb(235, 213, 52), 10, 10, 0, "%i", fps);
 
 			al_flip_display();
 
 			frame_count++;
-			acc_time -= 1.0 / const_fps;
+			acc_time -= TARGET_SPF;
+			if (acc_time >= 0.05) std::cout << "Time is accumulating..." << std::endl;
 		}
 
 		acc_time += delta_time;
 
 		m_sm.removeDeadStates();
 	}
-
-	al_destroy_font(fps_font);
 	al_destroy_event_queue(ev_queue);
 	al_destroy_display(display);
 }

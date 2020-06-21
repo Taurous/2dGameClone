@@ -7,7 +7,7 @@
 #include <allegro5/allegro_audio.h>
 
 #include "abstract_state.hpp"
-#include "font_animation.hpp"
+#include "animation.hpp"
 
 class PlayState : public AbstractState
 {
@@ -25,14 +25,19 @@ public:
 
 private:
 	bool loadResources();
+	void setState(int state);
 
-	std::vector<FontAnimation> anims;
+	ScoreAnimation cross_score;
+	ScoreAnimation circle_score;
+
+	BitmapAnimation bottom_anim;
 
 	ALLEGRO_BITMAP* bmp_circle;
 	ALLEGRO_BITMAP* bmp_cross;
 	ALLEGRO_BITMAP* bmp_back;
 	ALLEGRO_BITMAP* bmp_bar;
 	ALLEGRO_BITMAP* bmp_grid;
+	ALLEGRO_BITMAP* bmp_bottom;
 
 	ALLEGRO_FONT* fnt_score;
 	ALLEGRO_FONT* fnt_win;
@@ -50,7 +55,6 @@ private:
 	int tile_size;
 	bool playing;
 	int win_state;
-	int cross_score, circle_score;
 
 	int offx, offy;
 	int selected_index;
